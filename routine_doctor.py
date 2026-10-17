@@ -599,7 +599,7 @@ def analyze(days: int, now=None) -> dict:
                          pushed=sum(1 for r in tr if r["pushed"]), cost=cost,
                          median_cost=round(statistics.median([r["cost"] for r in tr]), 2) if tr else 0,
                          models=sorted({r["models"] for r in tr}), flags=flags, lint=lint,
-                         runs=tr, contract=cres))
+                         runs=tr, contract=cres, has_contract=bool(contract and "expect" in contract)))
     save_snapshots(snapshots)
     return dict(version=VERSION, generated=now.isoformat(timespec="minutes"), days=days,
                 tasks=rows, unknown_models=sorted(UNKNOWN_MODELS), red=red,
@@ -642,10 +642,13 @@ def fmt_report(a: dict, sections=("report", "lint", "contracts")) -> str:
         out.append("")
     if "contracts" in sections:
         withc = [r for r in a["tasks"] if r["contract"]]
+        declared = [r for r in a["tasks"] if r.get("has_contract")]
         out.append("## Outcome contracts")
-        if not withc:
+        if not declared:
             out.append("no contract.json found in any task folder — add one to turn 'it ran' into 'it worked'. "
                        "Example: {\"expect\": [{\"tool\": \"PushNotification\"}, {\"file_modified\": \"~/report.md\"}]}")
+        elif not withc:
+            out.append(f"{len(declared)} task(s) declare a contract ({', '.join(r['task'] for r in declared)}); no runs in the window to check yet")
         for r in withc:
             out.append(f"**{r['task']}**")
             for c in r["contract"]:
